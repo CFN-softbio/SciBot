@@ -1,0 +1,11 @@
+
+# Basic operation
+pip3 install numpy
+pip3 install openai
+pip3 install mysql-connector-python
+
+
+
+# Image embedding
+pip3 install torch torchvision
+pip3 install git+https://github.com/openai/CLIP.git
