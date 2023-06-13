@@ -2,6 +2,7 @@
 # Basic operation
 pip3 install numpy
 pip3 install openai
+#pip3 install anthropic
 pip3 install mysql-connector-python
 
 

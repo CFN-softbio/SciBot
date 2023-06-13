@@ -343,7 +343,7 @@ class FigureBot(ImageBot):
 class AnswerBot(Base):
     '''Answers questions, using the provided messages for context.'''
     
-    def __init__(self, configuration, name='AnswerBot', **kwargs):
+    def __init__(self, configuration, name='AnswerBot', max_response_len=3600, **kwargs):
         super().__init__(name=name, **kwargs)
 
         self.db = None        
@@ -358,7 +358,9 @@ class AnswerBot(Base):
         # For chat responses
         self.model = self.configuration['openai']['model']
         self.token_limit = self.configuration['openai']['model_token_limit']
-        self.LLM = OpenAI_LLM(api_key=api_key, model=self.model, token_limit=self.token_limit, name='OpenAI')
+        self.LLM_chat = OpenAI_LLM(api_key=api_key, model=self.model, token_limit=self.token_limit, name='OpenAI')
+        
+        self.LLM_embed = self.LLM_chat
         
         instruction = "You are a chatbot that answers questions, especially about scientific research. You are given snippets from relevant published journal articles. You should provide a meaningful response to the user question, based on your general knowledge and the information in the provided snippets. Do not make things up. Quote and refer to the sources where appropriate."
 
@@ -370,8 +372,28 @@ class AnswerBot(Base):
             ] 
         
         
-        self.max_context_len = int( (self.LLM.char_limit - self.header_len)*0.8 )
-        print('self.max_context_len', self.LLM.char_limit, self.header_len, self.max_context_len)
+        self.max_response_len = max_response_len # chars
+        self.max_context_len = self.LLM_chat.char_limit - self.header_len - self.max_response_len
+        
+        self.print_window()
+        
+        
+        
+    def print_window(self):
+        
+        total = self.header_len + self.max_context_len + self.max_response_len
+        
+        w, t, c = 0.187, 0.25, 1
+        self.msg('----------------------------------------------')
+        self.msg('|              |  words  |  tokens |  chars  |')
+        self.msg('| WINDOW       | {:7,d} | {:7,d} | {:7,d} |'.format(int(self.LLM_chat.word_limit), int(self.token_limit), int(self.LLM_chat.char_limit)))
+        self.msg('| Instructions | {:7,d} | {:7,d} | {:7,d} |'.format(int(self.header_len*w), int(self.header_len*t), int(self.header_len*c)))
+        self.msg('| Context      | {:7,d} | {:7,d} | {:7,d} |'.format(int(self.max_context_len*w), int(self.max_context_len*t), int(self.max_context_len*c)))
+        self.msg('| Response     | {:7,d} | {:7,d} | {:7,d} |'.format(int(self.max_response_len*w), int(self.max_response_len*t), int(self.max_response_len*c)))
+        self.msg('| TOTAL        | {:7,d} | {:7,d} | {:7,d} |'.format(int(total*w), int(total*t), int(total*c)))
+        self.msg('----------------------------------------------')
+        
+        
         
         
         
@@ -395,7 +417,7 @@ class AnswerBot(Base):
     ##################################################
     def get_embedding(self, text):
         
-        vector = self.LLM.embedding(text, model=self.embedding_model)
+        vector = self.LLM_embed.embedding(text, model=self.embedding_model)
         
         return vector
         
@@ -462,7 +484,7 @@ class AnswerBot(Base):
 
         self.msg(f'''Asking question ({len(question):,d} chars): "{question[:msg_cutoff]}"...''', 3, 2)
         
-        response = self.LLM.chat_completion(messages)
+        response = self.LLM_chat.chat_completion(messages)
         
         self.msg(f'''Received response ({len(response):,d} chars): "{response[:msg_cutoff]}"...''', 3, 2)
         
@@ -491,3 +513,43 @@ class AnswerBot(Base):
         
 
 
+class AnswerBot_Claude(AnswerBot):
+    
+    def __init__(self, configuration, name='AnswerBot', **kwargs):
+        Base.__init__(self, name=name, **kwargs)
+
+        self.db = None        
+        
+        self.configuration = configuration
+        
+
+        # For embedding lookup
+        api_key = self.configuration['openai']['api_key']
+        self.embedding_model = self.configuration['openai']['embedding_model']
+        self.embedding_token_limit = self.configuration['openai']['embedding_model_token_limit']
+        self.LLM_embed = OpenAI_LLM(api_key=api_key, model=self.embedding_model, token_limit=self.embedding_token_limit, name='OpenAI')        
+        
+        # For chat responses
+        api_key = self.configuration['anthropic']['api_key']
+        self.model = self.configuration['anthropic']['model']
+        self.token_limit = self.configuration['anthropic']['model_token_limit']
+        self.max_tokens_to_sample = self.configuration['anthropic']['max_tokens_to_sample']
+        self.LLM_chat = Anthropic_LLM(api_key=api_key, model=self.model, token_limit=self.token_limit, max_tokens_to_sample=self.max_tokens_to_sample, name='Claude')
+        
+        instruction = "You are a chatbot that answers questions, especially about scientific research. You are given snippets from relevant published journal articles. You should provide a meaningful response to the user question, based on your general knowledge and the information in the provided snippets. Do not make things up. Quote and refer to the sources where appropriate."
+
+        # Reserve this space in the message
+        self.header_len = len(instruction)
+        
+        self.background = [
+            {"role": "system", "content" : instruction}
+            ] 
+        
+        
+        self.max_response_len = self.max_tokens_to_sample # chars
+        self.max_context_len = self.LLM_chat.char_limit - self.header_len - self.max_response_len
+        
+        self.print_window()
+        
+          
+      

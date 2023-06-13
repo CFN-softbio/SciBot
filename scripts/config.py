@@ -34,6 +34,16 @@ SciBot_configuration = {
         'embedding_model_token_limit': 8191, # ~32,764 chars
         },
     
+    'anthropic': {
+        'api_key': 'sk-ant-api03-***********************************************************************************************'
+        #'model': 'claude-instant-1',
+        'model': 'claude-1',
+        #'model': 'claude-1-100k',
+        'model_token_limit': 9000, # ~36,000 chars
+        #'model_token_limit': 100000, # ~400,000 chars
+        'max_tokens_to_sample': 1000,
+        },    
+    
     'doc_database': {
         'host': 'localhost',
         'database': 'SciBot_DocumentStore',
