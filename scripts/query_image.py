@@ -38,5 +38,5 @@ if __name__ == "__main__":
     
     
     #similar_images = bot.query(query_image)
-    html = bot.query_txt(query_image, 'response_query_image.txt')
+    html = bot.query_txt(query_image, 'response_query_image.txt', mode='euclid', exclude=None)
     

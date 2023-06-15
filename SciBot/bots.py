@@ -121,19 +121,24 @@ class ImageBot(Base):
     # User interaction with bot
     ##################################################
 
-    def query(self, image_file):
+    def query(self, image_file, mode='cosine'):
         
         vector = self.ImgEmbed.image_to_embedding(image_file)
         
-        similarities = self.db.order_images_by_similarity(vector)
+        if mode=='cosine':
+            similarities = self.db.order_images_by_similarity(vector)
+        elif mode=='euclid':
+            similarities = self.db.order_images_by_distance(vector)
+        else:
+            self.msg_error(f'mode not recognized: {mode}')
         
         return similarities
 
         
-    def query_txt(self, image_file, outfile='response.html', num_cutoff=50):
+    def query_txt(self, image_file, outfile='response.html', mode='cosine', exclude=None, num_cutoff=50):
 
-        similarities = self.query(image_file)
-        txt = self.generate_txt(similarities, image_file, num_cutoff=num_cutoff)
+        similarities = self.query(image_file, mode=mode)
+        txt = self.generate_txt(similarities, image_file, num_cutoff=num_cutoff, exclude=exclude)
         
         if outfile is not None:
             with open(outfile, 'w') as fout:
@@ -142,10 +147,10 @@ class ImageBot(Base):
         return txt
 
     
-    def query_html(self, image_file, outfile='response.html', num_cutoff=50):
+    def query_html(self, image_file, outfile='response.html', mode='cosine', exclude=None, num_cutoff=50):
         
-        similarities = self.query(image_file)
-        html = self.generate_html(similarities, image_file, num_cutoff=num_cutoff)
+        similarities = self.query(image_file, mode=mode)
+        html = self.generate_html(similarities, image_file, num_cutoff=num_cutoff, exclude=exclude)
         
         if outfile is not None:
             with open(outfile, 'w') as fout:
@@ -154,25 +159,28 @@ class ImageBot(Base):
         return html
 
 
-    def generate_txt(self, images, image_file, num_cutoff=50):
+    def generate_txt(self, images, image_file, num_cutoff=50, exclude=None):
         
         txt = ''
 
         txt += f'Images similar to: {image_file}\n'
         
-        for i, image in enumerate(images):
-            if i<num_cutoff:
+        count = 0
+        for image in images:
+            if count<num_cutoff:
                 similarity, suffix, image_id, file_name = image
                 image_info = self.db.get_image(image_id, table_suffix=suffix)
                 
-                src = image_info['file_path']
-                txt += f'{i+1}\t{src}\n'
+                if (exclude is None) or (exclude not in image_info['file_path']):
+                    src = image_info['file_path']
+                    txt += f'{count+1}\t{src}\n'
+                    count += 1
             
             
         return txt
         
 
-    def generate_html(self, images, image_file, num_cutoff=50):
+    def generate_html(self, images, image_file, num_cutoff=50, exclude=None):
         
         html = f'''<!DOCTYPE html>
 <html lang="en">
@@ -216,19 +224,22 @@ class ImageBot(Base):
         html += f'<div class="title">Images similar to: <a href="{image_file}">{image_file.name}</a></div>\n'
         html += f'<a href="{image_file}"><img src="{image_file}" alt="{image_file.name}"></a>\n'
 
-        
-        for i, image in enumerate(images):
-            if i<num_cutoff:
+        count = 0
+        for image in images:
+            if count<num_cutoff:
                 similarity, suffix, image_id, file_name = image
                 image_info = self.db.get_image(image_id, table_suffix=suffix)
                 
-                
-                html += '<div class="box">\n'
-                name = image_info['file_name']
-                src = image_info['file_path']
-                html += f'<div class="caption"><a href="{src}">{src}</a></div>\n'
-                html += f'<a href="{src}"><img class="image" src="{src}" alt="{name}"></a>\n'
-                html += '</div>\n'
+                if (exclude is None) or (exclude not in image_info['file_path']):
+                    
+                    html += '<div class="box">\n'
+                    name = image_info['file_name']
+                    src = image_info['file_path']
+                    html += f'<div class="caption"><a href="{src}">{src}</a></div>\n'
+                    html += f'<a href="{src}"><img class="image" src="{src}" alt="{name}"></a>\n'
+                    html += '</div>\n'
+                    
+                    count += 1
             
             
         html += '</body>\n</html>\n'
@@ -257,16 +268,21 @@ class FigureBot(ImageBot):
     # User interaction with bot
     ##################################################
 
-    def query(self, image_file):
+    def query(self, image_file, mode='cosine'):
         
         vector = self.ImgEmbed.image_to_embedding(image_file)
         
-        similarities = self.db.order_figures_by_similarity(vector)
+        if mode=='cosine':
+            similarities = self.db.order_figures_by_similarity(vector)
+        elif mode=='euclid':
+            similarities = self.db.order_figures_by_distance(vector)
+        else:
+            self.msg_error(f'mode not recognized: {mode}')
         
         return similarities
     
 
-    def generate_html(self, figures, image_file, num_cutoff=50):
+    def generate_html(self, figures, image_file, mode='cosine', exclude=None, num_cutoff=50):
         
         html = f'''<!DOCTYPE html>
 <html lang="en">

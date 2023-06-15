@@ -37,5 +37,5 @@ if __name__ == "__main__":
     query_image = Path('/home/user/data/') / file_name
     
     #similar_images = bot.query(query_image)
-    html = bot.query_html(query_image, 'response_query_figure.html')
+    html = bot.query_html(query_image, 'response_query_figure.html', mode='cosine')
     

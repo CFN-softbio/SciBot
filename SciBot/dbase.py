@@ -397,6 +397,13 @@ ORDER BY c.doc_id, c.chunk_num ASC;"""
         return np.dot(np.array(x), np.array(y))
 
 
+    def vector_distance(self, x, y):
+        """
+        Returns the Euclidian distance between two points.
+        """
+        return np.linalg.norm(x - y)
+
+
     def order_chunks_by_similarity(self, vector):
         """
         Return the list of document chunks, sorted by relevance in descending order.
@@ -544,6 +551,21 @@ ORDER BY c.doc_id, c.chunk_num ASC;"""
         return similarities
     
     
+    def order_figures_by_distance(self, vector):
+        """
+        Return the list of figures/images, sorted by relevance in descending order.
+        """
+        
+        contexts = zip( self.figure_embeddings['table_suffix'], self.figure_embeddings['doc_ids'], self.figure_embeddings['fig_ids'], self.figure_embeddings['file_names'], self.figure_embeddings['vectors'] )
+
+        similarities = sorted([
+                (self.vector_distance(vector, image_embedding), table_suffix, doc_id, fig_id, file_name) for table_suffix, doc_id, fig_id, file_name, image_embedding in contexts
+            ], reverse=False)
+        
+        return similarities
+    
+    
+    
     # Images
     ##################################################
     def image_exists(self, infile, table_suffix=''):
@@ -670,5 +692,18 @@ ORDER BY c.doc_id, c.chunk_num ASC;"""
                 (self.vector_similarity(vector, image_embedding), table_suffix, image_id, file_name) for table_suffix, image_id, file_name, image_embedding in contexts
             ], reverse=True)
         
-        return similarities    
+        return similarities
     
+    
+    def order_images_by_distance(self, vector):
+        """
+        Return the list of figures/images, sorted by Euclidian distance, in descending order.
+        """
+        
+        contexts = zip( self.image_embeddings['table_suffix'], self.image_embeddings['image_ids'], self.image_embeddings['file_names'], self.image_embeddings['vectors'] )
+
+        similarities = sorted([
+                (self.vector_distance(vector, image_embedding), table_suffix, image_id, file_name) for table_suffix, image_id, file_name, image_embedding in contexts
+            ], reverse=False)
+        
+        return similarities    
