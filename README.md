@@ -10,4 +10,15 @@ to a user query.
 More complete technical details can be found in the corresponding preprint:
 https://arxiv.org/abs/2306.10067
 
-
+You can cite this work as:
+```bibtex
+@misc{yager2023domainspecific,
+      title={Domain-specific ChatBots for Science using Embeddings}, 
+      author={Kevin G. Yager},
+      year={2023},
+      eprint={2306.10067},
+      url={https://arxiv.org/abs/2306.10067},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL}
+}
+```
