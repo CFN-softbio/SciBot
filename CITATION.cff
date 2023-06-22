@@ -1,9 +1,13 @@
-@misc{yager2023domainspecific,
-      title={Domain-specific ChatBots for Science using Embeddings}, 
-      author={Kevin G. Yager},
-      year={2023},
-      eprint={2306.10067},
-      url={https://arxiv.org/abs/2306.10067},
-      archivePrefix={arXiv},
-      primaryClass={cs.CL}
-}
+cff-version: 1.2.0
+message: "You can cite this software as noted below. You may also want to cite the associated preprint."
+authors:
+- family-names: "Yager"
+  given-names: "Kevin G."
+  orcid: "https://orcid.org/0000-0001-7745-2513"
+- family-names: "Bot"
+  given-names: "Hew"
+  orcid: "https://orcid.org/0000-0000-0000-0000"
+title: "SciBot"
+version: 1.0.0
+date-released: 2023-06-12
+url: "https://github.com/CFN-softbio/SciBot"      
