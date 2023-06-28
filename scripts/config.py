@@ -29,7 +29,10 @@ SciBot_configuration = {
     'openai': {
         'api_key': 'sk-************************************************',
         'model': 'gpt-3.5-turbo',
+        #'model': 'gpt-3.5-turbo-0613', # function calls introduced
         'model_token_limit': 4096, # ~16,384 chars
+        #'model': 'gpt-3.5-turbo-16k', # Extended context length
+        #'model_token_limit': 16384, # ~65k chars
         'embedding_model': 'text-embedding-ada-002', # 1,536 length vector
         'embedding_model_token_limit': 8191, # ~32,764 chars
         },
@@ -38,8 +41,8 @@ SciBot_configuration = {
         'api_key': 'sk-ant-api03-***********************************************************************************************'
         #'model': 'claude-instant-1',
         'model': 'claude-1',
-        #'model': 'claude-1-100k',
         'model_token_limit': 9000, # ~36,000 chars
+        #'model': 'claude-1-100k',
         #'model_token_limit': 100000, # ~400,000 chars
         'max_tokens_to_sample': 1000,
         },    

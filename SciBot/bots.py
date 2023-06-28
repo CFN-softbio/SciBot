@@ -124,6 +124,9 @@ class ImageBot(Base):
     def query(self, image_file, mode='cosine'):
         
         vector = self.ImgEmbed.image_to_embedding(image_file)
+        #print(vector.shape)
+        #import numpy as np
+        #print('CLIP vector sum: {}'.format(np.sum(vector)))
         
         if mode=='cosine':
             similarities = self.db.order_images_by_similarity(vector)
@@ -438,7 +441,7 @@ class AnswerBot(Base):
         return vector
         
 
-    def construct_prompt(self, question, separator="\n*", doc_name=True):
+    def construct_prompt(self, question, max_context_len=None, separator="\n*", doc_name=True):
         '''Generate the text preample that we feed in for a question.'''
         
         vector = self.get_embedding(question)
@@ -450,6 +453,7 @@ class AnswerBot(Base):
         chosen_sections = []
         chosen_sections_len = 0
         chosen_sections_text = []
+        max_context_len = max_context_len or self.max_context_len
 
         for similarity, table_suffix, doc_id, chunk_num in most_relevant_chunks:
             
@@ -463,7 +467,7 @@ class AnswerBot(Base):
                 
             
             chosen_sections_len += len(content) + separator_len
-            if chosen_sections_len > self.max_context_len:
+            if chosen_sections_len > max_context_len:
                 break
 
             chosen_sections.append(separator + content.replace("\n", " "))
@@ -485,14 +489,14 @@ class AnswerBot(Base):
     # User interaction with bot
     ##################################################
         
-    def query(self, question, use_context=True, doc_name=True, msg_cutoff=35):
+    def query(self, question, use_context=True, doc_name=True, max_context_len=None, msg_cutoff=35):
         '''Answer user question by retrieving chunks, and doing a call
         to the LLM API.'''
         
         messages = self.background.copy()
         
         if use_context:
-            context_content = self.construct_prompt(question, doc_name=doc_name)
+            context_content = self.construct_prompt(question, doc_name=doc_name, max_context_len=max_context_len)
             messages.append({"role": "system", "content" : context_content})
         
         messages.append({"role": "user", "content" : question})
@@ -507,14 +511,14 @@ class AnswerBot(Base):
         return response
 
 
-    def mock_query(self, question, use_context=True, doc_name=True, savefile='./mock_query.txt', msg_cutoff=35):
+    def mock_query(self, question, use_context=True, doc_name=True, max_context_len=None, savefile='./mock_query.txt', msg_cutoff=35):
         '''Prepare to query the LLM, but don't actually send the request.
         Instead, just save the preparred query to disk.'''
         
         messages = self.background.copy()
         
         if use_context:
-            context_content = self.construct_prompt(question, doc_name=doc_name)
+            context_content = self.construct_prompt(question, doc_name=doc_name, max_context_len=max_context_len)
             messages.append({"role": "system", "content" : context_content})
         
         messages.append({"role": "user", "content" : question})
@@ -524,7 +528,63 @@ class AnswerBot(Base):
         with open(savefile, 'w') as fout:
             for message in messages:
                 fout.write(message['content']+'\n\n')
+
+
+    def query_via_db(self, thread_id, use_conversation=True, use_context=True, doc_name=True, max_context_len=None, conversation_cutoff=20, msg_cutoff=35):
+        '''Answer user question by retrieving chunks, and doing a call
+        to the LLM API.
+        This version operates through the database, both to identify the user query,
+        and provide a reply.'''
+
+        self.start_database()
+        last_message = self.db.get_last_thread_message(thread_id)
+        if last_message['who']!='user':
+            self.msg_error("Last message is from {last_message['who']} (should be 'user').")
+            return "[[Error: Last message is from {last_message['who']} (should be 'user')."
         
+        question = last_message['message_content']
+        
+        messages = self.background.copy()
+        
+        # Account for how much of the context window is consumed by the conversation history
+        max_context_len = max_context_len or self.max_context_len
+        if use_conversation:
+            thread = self.db.get_thread_messages(thread_id, cutoff=conversation_cutoff)
+            for item in thread:
+                max_context_len -= len(item['message_content'])
+
+        
+        # Add retrieved context document chunks
+        if use_context:
+            if use_conversation:
+                # The context should be constructed not just using the user question (last typed message), but the entire chat history.
+                question = ""
+                n = int(conversation_cutoff/4) # Limit to just recent history, to emphasize the actual user question
+                for item in thread[-n:]:
+                    question += f"{item['message_content']}\n"
+                
+            context_content = self.construct_prompt(question, doc_name=doc_name, max_context_len=max_context_len)
+            messages.append({"role": "system", "content" : context_content})
+
+
+        # Add conversation history (we put it after context, so that the conversation flows directly into bot completion)
+        if use_conversation:
+            for item in thread:
+                messages.append({"role": item['who'], "content" : item['message_content']})
+                
+        else:       
+            messages.append({"role": "user", "content" : question})
+
+
+        self.msg(f'''Asking question ({len(question):,d} chars): "{question[:msg_cutoff]}"...''', 3, 2)
+        
+        response = self.LLM_chat.chat_completion(messages)
+        
+        self.msg(f'''Received response ({len(response):,d} chars): "{response[:msg_cutoff]}"...''', 3, 2)
+        
+        self.db.add_thread_message(thread_id, 'assistant', response)
+        
+        return response        
      
         
 

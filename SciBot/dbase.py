@@ -707,3 +707,44 @@ ORDER BY c.doc_id, c.chunk_num ASC;"""
             ], reverse=False)
         
         return similarities    
+
+
+
+    # Messages (a.k.a. conversation threads)
+    ##################################################
+    def add_thread_message(self, thread_id, who, message_content):
+
+        sql = "INSERT INTO messages (thread_id, date_time, who, message_content) VALUES (%s, NOW(), %s, %s)"
+        values = (thread_id, who, message_content)
+        
+        self.cursor.execute(sql, values)
+        self.connection.commit()
+        
+        
+    def get_last_thread_message(self, thread_id):
+        
+        sql = f"""SELECT * FROM messages WHERE thread_id=%s ORDER BY date_time DESC LIMIT 1;"""
+        values = (thread_id, )
+        
+        rows = self.query_values(sql, values)
+
+        if len(rows)!=1:
+            self.msg_warning(f"{len(rows)} messages returned for thread_id={thread_id}")
+        
+        return rows[0]
+        
+        
+    def get_thread_messages(self, thread_id, cutoff=100):
+        
+        sql = f"""SELECT * FROM ( SELECT * FROM messages WHERE thread_id=%s ORDER BY date_time DESC LIMIT %s ) sub ORDER BY date_time ASC;"""
+        values = (thread_id, cutoff)
+        
+        rows = self.query_values(sql, values)
+
+        if len(rows)==0:
+            self.msg_warning(f"{len(rows)} messages returned for thread_id={thread_id}")
+        
+        return rows       
+        
+        
+        
