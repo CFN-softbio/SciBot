@@ -128,6 +128,15 @@ CREATE TABLE `images{table_suffix}` (
 
     # Documents
     ##################################################
+    def get_docs(self, table_suffix=''):
+        
+        sql = f"""SELECT * FROM documents{table_suffix} ORDER BY doc_id;"""
+        
+        rows = self.query(sql)
+        
+        return rows
+
+    
     def get_doc(self, doc_id, table_suffix=''):
         
         sql = f"""SELECT * FROM documents{table_suffix} WHERE doc_id='{doc_id}' ;"""
@@ -388,13 +397,17 @@ ORDER BY c.doc_id, c.chunk_num ASC;"""
     #https://www.mlq.ai/fine-tuning-gpt-3-question-answer-bot/
     #https://dev.to/manumaan/use-chatgpt-to-query-your-internal-website-5e2a
 
-    def vector_similarity(self, x, y):
+    def vector_similarity(self, x, y, normalize=True):
         """
         Returns the similarity between two vectors.
-
-        Because OpenAI Embeddings are normalized to length 1, the cosine similarity is the same as the dot product.
         """
-        return np.dot(np.array(x), np.array(y))
+        
+        if normalize:
+            return np.dot(np.array(x), np.array(y))/(np.linalg.norm(np.array(x))*np.linalg.norm(np.array(y)))
+        
+        else:
+            # Many embeddings (such as OpenAI text embeddings) are normalized to length 1; so the cosine similarity is the same as the dot product.
+            return np.dot(np.array(x), np.array(y))
 
 
     def vector_distance(self, x, y):
@@ -681,7 +694,7 @@ ORDER BY c.doc_id, c.chunk_num ASC;"""
         self.image_embeddings = data
     
     
-    def order_images_by_similarity(self, vector):
+    def order_images_by_similarity(self, vector, normalize=True):
         """
         Return the list of figures/images, sorted by relevance in descending order.
         """
@@ -689,7 +702,7 @@ ORDER BY c.doc_id, c.chunk_num ASC;"""
         contexts = zip( self.image_embeddings['table_suffix'], self.image_embeddings['image_ids'], self.image_embeddings['file_names'], self.image_embeddings['vectors'] )
 
         similarities = sorted([
-                (self.vector_similarity(vector, image_embedding), table_suffix, image_id, file_name) for table_suffix, image_id, file_name, image_embedding in contexts
+                (self.vector_similarity(vector, image_embedding, normalize=normalize), table_suffix, image_id, file_name) for table_suffix, image_id, file_name, image_embedding in contexts
             ], reverse=True)
         
         return similarities
@@ -745,6 +758,44 @@ ORDER BY c.doc_id, c.chunk_num ASC;"""
             self.msg_warning(f"{len(rows)} messages returned for thread_id={thread_id}")
         
         return rows       
+        
+        
+        
+    # scores_pairwise
+    ##################################################
+    def scores_pairwise_exists(self, doc_id_A, doc_id_B, retrows=False):
+        
+        sql = "SELECT * FROM scores_pairwise WHERE (doc_id_A=%s AND doc_id_B=%s) OR (doc_id_A=%s AND doc_id_B=%s) LIMIT 1"
+        values = (doc_id_A, doc_id_B, doc_id_B, doc_id_A)
+        
+        rows = self.query_values(sql, values)
+        
+        if retrows:
+            if len(rows)>0:
+                return True, rows[0]
+            else:
+                return False, None
+        
+        return len(rows)>0
+    
+    
+    def get_scores_pairwise(self):
+        
+        sql = "SELECT * FROM scores_pairwise"
+        
+        rows = self.query(sql)
+        
+        return rows
+
+
+    def add_scores_pairwise(self, doc_id_A, doc_id_B, winner, text):
+        
+        sql = "INSERT INTO scores_pairwise (doc_id_A, doc_id_B, winner, text_assessment) VALUES (%s, %s, %s, %s)"
+        values = (doc_id_A, doc_id_B, winner, text)
+        
+        self.cursor.execute(sql, values)
+        self.connection.commit()
+        
         
         
         

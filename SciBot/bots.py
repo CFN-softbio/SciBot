@@ -116,6 +116,7 @@ class ImageBot(Base):
     def load_embedding_lookup_file(self, infile='./image_lookup.npy'):
         self.start_database()
         self.db.load_image_embedding_lookup_file(infile=infile)
+        
 
 
     # User interaction with bot
@@ -129,7 +130,9 @@ class ImageBot(Base):
         #print('CLIP vector sum: {}'.format(np.sum(vector)))
         
         if mode=='cosine':
-            similarities = self.db.order_images_by_similarity(vector)
+            similarities = self.db.order_images_by_similarity(vector, normalize=True)
+        elif mode=='dot':
+            similarities = self.db.order_images_by_similarity(vector, normalize=False)
         elif mode=='euclid':
             similarities = self.db.order_images_by_distance(vector)
         else:
@@ -276,7 +279,9 @@ class FigureBot(ImageBot):
         vector = self.ImgEmbed.image_to_embedding(image_file)
         
         if mode=='cosine':
-            similarities = self.db.order_figures_by_similarity(vector)
+            similarities = self.db.order_figures_by_similarity(vector, normalize=True)
+        elif mode=='dot':
+            similarities = self.db.order_images_by_similarity(vector, normalize=False)
         elif mode=='euclid':
             similarities = self.db.order_figures_by_distance(vector)
         else:
@@ -557,9 +562,17 @@ class AnswerBot(Base):
         # Add retrieved context document chunks
         if use_context:
             if use_conversation:
-                # The context should be constructed not just using the user question (last typed message), but the entire chat history.
+                # The context should be constructed not just using the user question (last typed message), but some of the chat history. However, if we use too much of the chat history to compute the embedding, then the older Q+A (which might now be irrelevant) will dominate the vector calculation.
+                if len(question)<35:
+                    # This is a very short question, so it might be a follow-up (requires more conversation history).
+                    n = 5
+                elif len(question)>500:
+                    # This is a detailed question. So probably it alone should determine the context lookup.
+                    n = 1
+                else:
+                    # By default, let's just have the last Q and A (plus current Q) in context.
+                    n = 3
                 question = ""
-                n = int(conversation_cutoff/4) # Limit to just recent history, to emphasize the actual user question
                 for item in thread[-n:]:
                     question += f"{item['message_content']}\n"
                 
