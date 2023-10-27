@@ -54,6 +54,7 @@ class OpenAI_LLM(Base):
         completion = openai.ChatCompletion.create(
             model=model, 
             messages=messages,
+            #temperature=1.0,
         )
         
         response = completion['choices'][0]['message']

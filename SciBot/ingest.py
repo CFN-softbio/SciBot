@@ -565,6 +565,7 @@ class DocumentIngester(Ingester):
         si, sf = step_initial, step_final # Use shorter names to make code below easier to read
         
         xml_dir = self.configuration['document_dir'] / 'xml/'
+        Path(xml_dir).mkdir(parents=True, exist_ok=True)
         
         
         if self.do_step(0, si, sf):
@@ -585,6 +586,7 @@ class DocumentIngester(Ingester):
             # These are not used for any downstream tasks, but could be useful to
             # the user.
             txt_dir = self.configuration['document_dir'] / 'txt/'
+            Path(txt_dir).mkdir(parents=True, exist_ok=True)
             self.xmls_to_txt(xml_dir=xml_dir, txt_dir=txt_dir, force=force)
             
                         
@@ -610,6 +612,8 @@ class DocumentIngester(Ingester):
             # break those into a separate set of lookup chunks.
             
             summary_dir = self.configuration['document_dir'] / 'summary/'
+            Path(summary_dir).mkdir(parents=True, exist_ok=True)
+
             
             if self.do_step(10, si, sf):
                 self.xmls_to_summaries(xml_dir=xml_dir, summary_dir=summary_dir, force=force)

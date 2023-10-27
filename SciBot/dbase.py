@@ -797,5 +797,28 @@ ORDER BY c.doc_id, c.chunk_num ASC;"""
         self.connection.commit()
         
         
+    # tool_classify
+    ##################################################
+    def tool_classify_exists(self, doc_id, retrows=False):
+        
+        sql = "SELECT * FROM tool_classify WHERE doc_id=%s LIMIT 1"
+        values = (doc_id, )
+        
+        rows = self.query_values(sql, values)
+        
+        if retrows:
+            if len(rows)>0:
+                return True, rows[0]
+            else:
+                return False, None
+        
+        return len(rows)>0        
         
         
+    def add_tool_classify(self, doc_id, result, text, title='N/A'):
+        
+        sql = "INSERT INTO tool_classify (doc_id, result, text_assessment, title) VALUES (%s, %s, %s, %s)"
+        values = (doc_id, result, text, title)
+        
+        self.cursor.execute(sql, values)
+        self.connection.commit()        
