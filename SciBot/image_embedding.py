@@ -35,8 +35,14 @@ class Image_Embedding(Base):
         
     def image_to_embedding(self, image_path):
         
-        # Load and preprocess an image
         image = Image.open(image_path)
+        
+        return self.image_data_to_embedding(image)
+
+
+    def image_data_to_embedding(self, image):
+        
+        # Load and preprocess an image
         image_input = self.preprocess(image).unsqueeze(0).to(self.device)
         
         # Calculate the image embeddings
@@ -49,7 +55,7 @@ class Image_Embedding(Base):
         self.msg(f'Computed embedding vector: {vector}', 7, 3)
         
         return vector
-
+    
 
     def image_class_probabilities(self, image_path, categories):
 
