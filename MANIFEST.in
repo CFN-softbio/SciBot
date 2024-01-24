@@ -1,0 +1,12 @@
+include LICENSE
+include README.md
+include requirements.txt
+
+recursive-exclude * __pycache__
+recursive-exclude * *.py[co]
+
+include versioneer.py
+include SciBot/_version.py
+
+# If including data files in the package, add them like:
+# include path/to/data_file
