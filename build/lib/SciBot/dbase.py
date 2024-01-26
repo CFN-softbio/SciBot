@@ -70,6 +70,10 @@ class DocumentDatabase(Base):
 
     # Create tables within database
     ##################################################
+    # NB: To get the SQL for generating a table, from phpmyadmin:
+    #    Export
+    #    Custom - display all possible options
+    #    structure
 
     def create_table_documents(self):
         sql = """
@@ -124,7 +128,22 @@ CREATE TABLE `images{table_suffix}` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;"""
 
         self.cursor.execute(sql)
-        
+
+    def create_table_figures(self, table_suffix=''):
+        sql = f"""
+CREATE TABLE `figures{table_suffix}` (
+  `fig_id` int NOT NULL,
+  `doc_id` int NOT NULL,
+  `fig_num` int DEFAULT NULL,
+  `fig_caption` text NOT NULL,
+  `file_path` text,
+  `file_name` text,
+  `embedding_model` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci,
+  `embedding_vector` blob
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;"""
+
+        self.cursor.execute(sql)        
+
 
     # Documents
     ##################################################

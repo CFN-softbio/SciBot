@@ -711,6 +711,7 @@ class ImageIngester(Ingester):
     def create_tables(self, table_suffix='', close=True):
         self.start_database()
         self.db.create_table_images(table_suffix=table_suffix)
+        self.db.create_table_figures(table_suffix=table_suffix)
         if close:
             self.close_database()
 
