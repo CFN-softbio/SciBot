@@ -2,11 +2,10 @@
 # -*- coding: utf-8 -*-
 
 """
-Filename: bots.py
-Original Author: Kevin G. Yager, Brookhaven National Laboratory
+Filename: ingest_pdfs.py
+Author: Kevin G. Yager, Brookhaven National Laboratory
 Email: kyager@bnl.gov
 Date created: 2023-04-03
-Contributors: Terry Healy (modifications to use Azure OpenAI)
 Description:
  Defines various LLM chatbots.
 """
@@ -643,133 +642,3 @@ class AnswerBot_Claude(AnswerBot):
         
           
       
-
-class AnswerBot_Azure_OpenAI(AnswerBot):
-    '''Answers questions, using the provided messages for context.'''
-
-    def __init__(self, configuration, name='AnswerBot', max_response_len=3600, **kwargs):
-        
-        Base.__init__(self, name=name, **kwargs)
-
-        self.db = None        
-        
-        self.configuration = configuration
-        
-        # Azure OpenAI version
-        api_key = self.configuration['azure_openai']['api_key']
-        self.endpoint = self.configuration['azure_openai']['endpoint']
-        
-        self.deployment = self.configuration['azure_openai']['deployment_name']
-        self.model = self.configuration['azure_openai']['model']
-        self.token_limit = self.configuration['azure_openai']['model_token_limit']
-        
-        self.embedding_deployment = self.configuration['azure_openai']['embedding_deployment_name']
-        self.embedding_model = self.configuration['azure_openai']['embedding_model']
-        self.embedding_model_token_limit = self.configuration['azure_openai']['embedding_model_token_limit']
-        
-        self.LLM_chat = Azure_OpenAI_LLM(api_key=api_key,
-                                    model=self.model,
-                                    token_limit=self.token_limit,
-                                    endpoint=self.endpoint,
-                                    name='LLM-AzureOpenAI',
-                                    deployment=self.deployment,)
-        
-        self.LLM_embed = Azure_OpenAI_embedding(api_key=api_key,
-                                    model=self.embedding_model,
-                                    token_limit=self.embedding_model_token_limit,
-                                    endpoint=self.endpoint,
-                                    name='embed-AzureOpenAI',
-                                    deployment=self.embedding_deployment,)
-        
-        
-        instruction = "You are a chatbot that answers questions, especially about scientific research. You are " \
-                      "given snippets from relevant published journal articles. You should provide a meaningful " \
-                      "response to the user question, based on your general knowledge and the information in the " \
-                      "provided snippets. Do not make things up. Quote and refer to the sources where appropriate."
-
-        # Reserve this space in the message
-        self.header_len = len(instruction)
-        self.background = [
-            {"role": "system", "content": instruction}
-        ]
-        self.max_response_len = max_response_len  # chars
-        self.max_context_len = self.LLM_chat.char_limit - self.header_len - self.max_response_len
-        self.print_window()
-        
-        
-    def mock_query(self, question, use_context=True, doc_name=True, max_context_len=None, savefile='./mock_query.txt',
-                   msg_cutoff=35):
-        '''Prepare to query the LLM, but don't actually send the request.
-        Instead, just save the preparred query to disk.'''
-
-        messages = self.background.copy()
-        if use_context:
-            context_content = self.construct_prompt(question, doc_name=doc_name, max_context_len=max_context_len)
-            messages.append({"role": "system", "content": context_content})
-
-        messages.append({"role": "user", "content": question})
-        self.msg(f'''Saving question ({len(question):,d} chars): "{question[:msg_cutoff]}"...''', 3, 2)
-        with open(savefile, 'w') as fout:
-            for message in messages:
-                fout.write(message['content'] + '\n\n')
-
-
-    def query_via_db(self, thread_id, use_conversation=True, use_context=True, doc_name=True, max_context_len=None,
-                     conversation_cutoff=20, msg_cutoff=35):
-        '''Answer user question by retrieving chunks, and doing a call to the LLM API.
-        This version operates through the database, both to identify the user query, and provide a reply.
-        '''
-
-        self.start_database()
-        last_message = self.db.get_last_thread_message(thread_id)
-        if last_message['who'] != 'user':
-            self.msg_error("Last message is from {last_message['who']} (should be 'user').")
-            return "[[Error: Last message is from {last_message['who']} (should be 'user')."
-
-        question = last_message['message_content']
-        messages = self.background.copy()
-
-        # Account for how much of the context window is consumed by the conversation history
-        max_context_len = max_context_len or self.max_context_len
-        if use_conversation:
-            thread = self.db.get_thread_messages(thread_id, cutoff=conversation_cutoff)
-            for item in thread:
-                max_context_len -= len(item['message_content'])
-
-        # Add retrieved context document chunks
-        if use_context:
-            if use_conversation:
-                # The context should be constructed not just using the user question (last typed message),
-                # but some of the chat history. However, if we use too much of the chat history to compute
-                # the embedding, then the older Q+A (which might now be irrelevant) will dominate the vector
-                # calculation.
-                if len(question) < 35:
-                    # This is a very short question, so it might be a follow-up (requires more conversation history).
-                    n = 5
-                elif len(question) > 500:
-                    # This is a detailed question. So probably it alone should determine the context lookup.
-                    n = 1
-                else:
-                    # By default, let's just have the last Q and A (plus current Q) in context.
-                    n = 3
-                question = ""
-                for item in thread[-n:]:
-                    question += f"{item['message_content']}\n"
-
-            context_content = self.construct_prompt(question, doc_name=doc_name, max_context_len=max_context_len)
-            messages.append({"role": "system", "content": context_content})
-
-        # Add conversation history (we put it after context, so that the conversation flows directly into bot completion)
-        if use_conversation:
-            for item in thread:
-                messages.append({"role": item['who'], "content": item['message_content']})
-        else:
-            messages.append({"role": "user", "content": question})
-
-        self.msg(f'''Asking question ({len(question):,d} chars): "{question[:msg_cutoff]}"...''', 3, 2)
-        response = self.LLM_chat.chat_completion(messages)
-        self.msg(f'''Received response ({len(response):,d} chars): "{response[:msg_cutoff]}"...''', 3, 2)
-        self.db.add_thread_message(thread_id, 'assistant', response)
-
-        return response
-        

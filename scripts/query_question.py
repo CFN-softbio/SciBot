@@ -21,6 +21,7 @@ SciBot_PATH  in sys.path or sys.path.append(SciBot_PATH)
 
 from SciBot.bots import AnswerBot
 #from SciBot.bots import AnswerBot_Claude as AnswerBot
+#from SciBot.bots import AnswerBot_Azure_OpenAI as AnswerBot
 
 # We presume there is a local file called "config.py" that stores your configuration
 import config 

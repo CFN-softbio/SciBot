@@ -39,6 +39,23 @@ SciBot_configuration = {
         'embedding_model_token_limit': 8191, # ~32,764 chars
         },
     
+    'azure_openai': {
+        # Refer to your Azure configuration to create/check the endpoint and deployment names
+        # Microsoft Azure: https://portal.azure.com/#home.
+        # Azure OpenAI Studio: https://oai.azure.com/portal/
+        'api_key': '******************************** ',
+        'endpoint': 'https://*****.openai.azure.com/',
+        'deployment_name': '********',
+        'model': 'gpt-35-turbo-16k',
+        'model_token_limit': 16384, # ~65k chars
+        #'model': 'gpt-4',
+        #'model_token_limit': 128000, # ~512k chars
+        'embedding_deployment_name': '********',
+        'embedding_model': 'text-embedding-ada-002', # 1,536 length vector
+        'embedding_model_token_limit': 8191, # ~32k chars
+        },
+        
+    
     'anthropic': {
         'api_key': 'sk-ant-api03-***********************************************************************************************'
         #'model': 'claude-instant-1',

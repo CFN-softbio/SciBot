@@ -11,8 +11,7 @@ Description:
 
 
 from .Base import Base
-#import openai # pre-1.0 syntax
-from openai import OpenAI # 1.0 syntax
+import openai
 
 
 # Conversion factors (for GPT-3 LLM):
@@ -37,7 +36,7 @@ class OpenAI_LLM(Base):
         
         super().__init__(name=name, **kwargs)
         
-        
+        openai.api_key = api_key
         self.model = model
         self.token_limit = token_limit
         self.word_limit = int(self.token_limit*0.75)
@@ -46,31 +45,21 @@ class OpenAI_LLM(Base):
         #self.paragraph_limit = int(self.word_limit/250)
         #self.page_limit = self.char_limit/1800
         
-        # pre-1.0 syntax:
-        #openai.api_key = api_key 
-        # 1.0 syntax:
-        self.client = OpenAI(api_key=api_key)        
-        
         
     def chat_completion(self, messages, model=None):
         
         if model is None:
             model = self.model
         
-        # pre-1.0 syntax:
-        #completion = openai.ChatCompletion.create(
-            #model=model, 
-            #messages=messages,
+        completion = openai.ChatCompletion.create(
+            model=model, 
+            messages=messages,
             #temperature=1.0,
-        #)
-        #response = completion['choices'][0]['message']
+        )
         
-        # 1.0 syntax:
-        completion = self.client.chat.completions.create(model=model, messages=messages)
-        response = completion.choices[0].message
-        
-        if response.role=="assistant":
-            response = response.content
+        response = completion['choices'][0]['message']
+        if response['role']=="assistant":
+            response = response['content']
         else:
             response = self.msg_error("No response matching 'assistant'.")
             
@@ -84,16 +73,13 @@ class OpenAI_LLM(Base):
         
         if model is None:
             model = self.model
-
-        # pre-1.0 syntax:
-        #result = openai.Embedding.create(
-            #model=model,
-            #input=text,
-        #)
-        #return result['data'][0]['embedding']
+            
+        result = openai.Embedding.create(
+            model=model,
+            input=text,
+        )
+        
+        return result['data'][0]['embedding']
     
-        # 1.0 syntax:
-        result = self.client.embeddings.create(model=model, input=text)
-        return result.data[0].embedding
         
             
