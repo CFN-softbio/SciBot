@@ -594,6 +594,7 @@ class DocumentIngester(Ingester):
 
 
         if self.do_step(3, si, sf):
+            # TODO: Possible BUG: Does this step actually come after xmls_to_database ?
             # Update the database with the source PDF paths
             self.pdfs_to_db(source_dir, force=force)
 
@@ -649,8 +650,65 @@ class DocumentIngester(Ingester):
             
         self.close_database()
         
+
         
+    def ingest_single_txt(self, infile, title='<No title given>', authors='N/A', step_initial=3, chunk_length=None, overlap_length=None, step_final=None, make_summaries=False, force=False):
+        '''Allows one to manually insert a text document (rather than a PDF) into the database.
+        The input will need to manually specify the document title/name.'''
+
+        si, sf = step_initial, step_final # Use shorter names to make code below easier to read
+
+
+        with open(infile, 'r') as fin:
+            text = fin.read()
+        md = {'len_xml_chars': len(text), 'title': title, 'authors': authors, 'first_author': authors, 'last_author': authors}
+
+        
+        self.start_database()
+
+        if self.do_step(3, si, sf):
+            # txt to db
+            self.msg(f"Adding file path to database: {infile}")
+            doc_id = self.db.add_doc(infile, md)
+
+
+        if self.do_step(4, si, sf):
+            doc_id = self.db.get_doc_id(infile.name)
+            self.msg(f"Found doc_id: {doc_id}", 6, 3)
             
+            # Convert text to chunks
+            if chunk_length is None:
+                chunk_length = self.configuration['chunk_length']
+            if overlap_length is None:
+                overlap_length = self.configuration['chunk_overlap_length']
+            chunks = self.split_overlapping_chunks(text, chunk_length, overlap_length)
+
+            # Add chunks
+            self.db.add_chunks(doc_id, chunks, table_suffix='', md=md)
+
+            
+        if self.do_step(5, si, sf):
+            # Compute embedding for each chunk
+            self.calc_chunk_embeddings(force=force)
+            
+            
+        if make_summaries:
+            # TODO: Handle this.
+            pass
+            
+            
+        if self.do_step(20, si, sf):
+            # Generate rapid lookup file
+            outfile = './chunk_lookup.npy'
+            model = self.configuration['openai']['embedding_model']
+            table_suffixes = ['']
+            if make_summaries:
+                table_suffixes.append('_summary')
+                
+            self.save_embedding_lookup_file(table_suffixes=table_suffixes, outfile=outfile)            
+            
+            
+        self.close_database()            
             
         
             

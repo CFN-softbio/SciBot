@@ -31,10 +31,12 @@ SciBot_configuration = {
         #'model': 'gpt-3.5-turbo',
         #'model': 'gpt-3.5-turbo-0613', # function calls introduced
         #'model_token_limit': 4096, # ~16,384 chars
-        'model': 'gpt-3.5-turbo-16k', # Extended context length
-        'model_token_limit': 16384, # ~65k chars
+        #'model': 'gpt-3.5-turbo-16k', # Extended context length
+        #'model_token_limit': 16384, # ~65k chars
         #'model': 'gpt-4',
         #'model_token_limit': 8000, # ~32k chars
+        'model': 'gpt-4o',
+        'model_token_limit': 128000, # ~512k chars
         'embedding_model': 'text-embedding-ada-002', # 1,536 length vector
         'embedding_model_token_limit': 8191, # ~32,764 chars
         },
@@ -46,10 +48,12 @@ SciBot_configuration = {
         'api_key': '******************************** ',
         'endpoint': 'https://*****.openai.azure.com/',
         'deployment_name': '********',
-        'model': 'gpt-35-turbo-16k',
-        'model_token_limit': 16384, # ~65k chars
+        #'model': 'gpt-35-turbo-16k',
+        #'model_token_limit': 16384, # ~65k chars
         #'model': 'gpt-4',
         #'model_token_limit': 128000, # ~512k chars
+        'model': 'gpt-4o',
+        'model_token_limit': 128000, # ~512k chars
         'embedding_deployment_name': '********',
         'embedding_model': 'text-embedding-ada-002', # 1,536 length vector
         'embedding_model_token_limit': 8191, # ~32k chars
